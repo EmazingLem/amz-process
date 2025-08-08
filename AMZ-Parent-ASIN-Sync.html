@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SKU Data Validation Tool</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        
+        .container {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+        }
+        
+        h1 {
+            color: #2d3748;
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .file-upload-section {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .file-upload-card {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+            border: 2px dashed #e2e8f0;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .file-upload-card:hover {
+            border-color: #667eea;
+            transform: translateY(-5px);
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.1);
+        }
+        
+        .file-upload-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            transform: translateX(-100%);
+            transition: transform 0.3s ease;
+        }
+        
+        .file-upload-card:hover::before {
+            transform: translateX(0);
+        }
+        
+        .file-upload-card h3 {
+            color: #2d3748;
+            margin-bottom: 15px;
+            font-size: 1.2em;
+        }
+        
+        .file-input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e2e8f0;
+            border-radius: 10px;
+            font-size: 14px;
+            transition: all 0.3s ease;
+            background: #f8fafc;
+        }
+        
+        .file-input:focus {
+            outline: none;
+            border-color: #667eea;
+            background: white;
+        }
+        
+        .file-status {
+            margin-top: 10px;
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 0.9em;
+            font-weight: 500;
+        }
+        
+        .file-status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .file-status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .validate-btn {
+            width: 100%;
+            padding: 15px 30px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            border-radius: 15px;
+            font-size: 1.1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin: 20px 0;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .validate-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
+        }
+        
+        .validate-btn:disabled {
+            background: #cbd5e0;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        
+        .results-section {
+            margin-top: 30px;
+            display: none;
+        }
+        
+        .summary-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .summary-card {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+            border-left: 5px solid;
+            transition: transform 0.3s ease;
+        }
+        
+        .summary-card:hover {
+            transform: translateY(-5px);
+        }
+        
+        .summary-card.total {
+            border-left-color: #667eea;
+        }
+        
+        .summary-card.valid {
+            border-left-color: #48bb78;
+        }
+        
+        .summary-card.mismatched {
+            border-left-color: #f56565;
+        }
+        
+        .summary-card h3 {
+            color: #2d3748;
+            margin-bottom: 10px;
+            font-size: 1.1em;
+        }
+        
+        .summary-card .number {
+            font-size: 2.5em;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .summary-card.total .number {
+            color: #667eea;
+        }
+        
+        .summary-card.valid .number {
+            color: #48bb78;
+        }
+        
+        .summary-card.mismatched .number {
+            color: #f56565;
+        }
+        
+        .results-table {
+            background: white;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+        }
+        
+        .table-header {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 20px;
+            font-size: 1.2em;
+            font-weight: 600;
+        }
+        
+        .table-wrapper {
+            overflow-x: auto;
+            max-height: 600px;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        th, td {
+            padding: 15px;
+            text-align: left;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        
+        th {
+            background: #f8fafc;
+            font-weight: 600;
+            color: #2d3748;
+            position: sticky;
+            top: 0;
+            z-index: 1;
+        }
+        
+        tr:hover {
+            background: #f8fafc;
+        }
+        
+        .mismatch {
+            background: #fed7d7;
+            color: #c53030;
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-weight: 500;
+        }
+        
+        .match {
+            background: #c6f6d5;
+            color: #2f855a;
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-weight: 500;
+        }
+        
+        .download-btn {
+            background: #48bb78;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 10px;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 20px;
+        }
+        
+        .download-btn:hover {
+            background: #38a169;
+            transform: translateY(-2px);
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #667eea;
+        }
+        
+        .loading::after {
+            content: '';
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #667eea;
+            border-radius: 50%;
+            border-top-color: transparent;
+            animation: spin 1s linear infinite;
+            margin-left: 10px;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>SKU Data Validation Tool</h1>
+        
+        <div class="file-upload-section">
+            <div class="file-upload-card">
+                <h3>SF Parent and ASIN.csv</h3>
+                <input type="file" id="sfFile" accept=".csv" class="file-input">
+                <div id="sfStatus" class="file-status" style="display: none;"></div>
+            </div>
+            
+            <div class="file-upload-card">
+                <h3>AMZ Parent.csv</h3>
+                <input type="file" id="amzParentFile" accept=".csv" class="file-input">
+                <div id="amzParentStatus" class="file-status" style="display: none;"></div>
+            </div>
+            
+            <div class="file-upload-card">
+                <h3>AMZ ASIN.txt</h3>
+                <input type="file" id="amzAsinFile" accept=".txt" class="file-input">
+                <div id="amzAsinStatus" class="file-status" style="display: none;"></div>
+            </div>
+        </div>
+        
+        <button id="validateBtn" class="validate-btn" disabled>Validate Data</button>
+        
+        <div id="results" class="results-section">
+            <div class="summary-cards">
+                <div class="summary-card total">
+                    <h3>Total SKUs</h3>
+                    <div class="number" id="totalCount">0</div>
+                </div>
+                <div class="summary-card valid">
+                    <h3>Valid Matches</h3>
+                    <div class="number" id="validCount">0</div>
+                </div>
+                <div class="summary-card mismatched">
+                    <h3>Mismatches</h3>
+                    <div class="number" id="mismatchCount">0</div>
+                </div>
+            </div>
+            
+            <div class="results-table">
+                <div class="table-header">
+                    Validation Results
+                </div>
+                <div class="table-wrapper">
+                    <table id="resultsTable">
+                        <thead>
+                            <tr>
+                                <th>SKU</th>
+                                <th>Parent Status</th>
+                                <th>SF Parent</th>
+                                <th>AMZ Parent</th>
+                                <th>ASIN Status</th>
+                                <th>SF ASIN</th>
+                                <th>AMZ ASIN</th>
+                            </tr>
+                        </thead>
+                        <tbody id="resultsBody">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <button id="downloadBtn" class="download-btn">Download Results as CSV</button>
+        </div>
+    </div>
+
+    <script>
+        let sfData = null;
+        let amzParentData = null;
+        let amzAsinData = null;
+        let validationResults = [];
+
+        // File upload handlers
+        document.getElementById('sfFile').addEventListener('change', handleSfFile);
+        document.getElementById('amzParentFile').addEventListener('change', handleAmzParentFile);
+        document.getElementById('amzAsinFile').addEventListener('change', handleAmzAsinFile);
+        document.getElementById('validateBtn').addEventListener('click', validateData);
+        document.getElementById('downloadBtn').addEventListener('click', downloadResults);
+
+        function handleSfFile(event) {
+            const file = event.target.files[0];
+            if (file) {
+                Papa.parse(file, {
+                    header: true,
+                    dynamicTyping: true,
+                    skipEmptyLines: true,
+                    complete: function(results) {
+                        sfData = results.data;
+                        updateFileStatus('sfStatus', `✓ Loaded ${sfData.length} records`, 'success');
+                        checkValidateButton();
+                    },
+                    error: function(error) {
+                        updateFileStatus('sfStatus', `✗ Error: ${error.message}`, 'error');
+                    }
+                });
+            }
+        }
+
+        function handleAmzParentFile(event) {
+            const file = event.target.files[0];
+            if (file) {
+                Papa.parse(file, {
+                    header: true,
+                    dynamicTyping: true,
+                    skipEmptyLines: true,
+                    complete: function(results) {
+                        amzParentData = results.data;
+                        updateFileStatus('amzParentStatus', `✓ Loaded ${amzParentData.length} records`, 'success');
+                        checkValidateButton();
+                    },
+                    error: function(error) {
+                        updateFileStatus('amzParentStatus', `✗ Error: ${error.message}`, 'error');
+                    }
+                });
+            }
+        }
+
+        function handleAmzAsinFile(event) {
+            const file = event.target.files[0];
+            if (file) {
+                Papa.parse(file, {
+                    header: true,
+                    dynamicTyping: true,
+                    skipEmptyLines: true,
+                    delimiter: '\t',
+                    complete: function(results) {
+                        amzAsinData = results.data;
+                        updateFileStatus('amzAsinStatus', `✓ Loaded ${amzAsinData.length} records`, 'success');
+                        checkValidateButton();
+                    },
+                    error: function(error) {
+                        updateFileStatus('amzAsinStatus', `✗ Error: ${error.message}`, 'error');
+                    }
+                });
+            }
+        }
+
+        function updateFileStatus(elementId, message, type) {
+            const statusEl = document.getElementById(elementId);
+            statusEl.textContent = message;
+            statusEl.className = `file-status ${type}`;
+            statusEl.style.display = 'block';
+        }
+
+        function checkValidateButton() {
+            const btn = document.getElementById('validateBtn');
+            btn.disabled = !(sfData && amzParentData && amzAsinData);
+        }
+
+        function validateData() {
+            const btn = document.getElementById('validateBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<div class="loading">Validating data...</div>';
+
+            setTimeout(() => {
+                try {
+                    // Create lookup maps for faster searching
+                    const parentLookup = {};
+                    const asinLookup = {};
+
+                    // Build parent lookup from AMZ Parent data
+                    amzParentData.forEach(row => {
+                        const sku = row['contribution_sku#1.value'];
+                        const parent = row['child_parent_sku_relationship[marketplace_id=ATVPDKIKX0DER]#1.parent_sku'];
+                        if (sku && parent) {
+                            parentLookup[sku.toString().trim()] = parent.toString().trim();
+                        }
+                    });
+
+                    // Build ASIN lookup from AMZ ASIN data
+                    amzAsinData.forEach(row => {
+                        const sku = row['seller-sku'];
+                        const asin = row['asin1'];
+                        if (sku && asin) {
+                            asinLookup[sku.toString().trim()] = asin.toString().trim();
+                        }
+                    });
+
+                    validationResults = [];
+
+                    // Validate each row in SF data
+                    sfData.forEach(row => {
+                        const sku = row['B2C Product: SKU'];
+                        const sfParent = row['Amazon Parent'];
+                        const sfAsin = row['ASIN'];
+
+                        if (!sku) return;
+
+                        const skuKey = sku.toString().trim();
+                        const amzParent = parentLookup[skuKey];
+                        const amzAsin = asinLookup[skuKey];
+
+                        const parentMatch = sfParent && amzParent && sfParent.toString().trim() === amzParent;
+                        const asinMatch = sfAsin && amzAsin && sfAsin.toString().trim() === amzAsin;
+
+                        validationResults.push({
+                            sku: skuKey,
+                            parentMatch: parentMatch,
+                            sfParent: sfParent || 'N/A',
+                            amzParent: amzParent || 'Not Found',
+                            asinMatch: asinMatch,
+                            sfAsin: sfAsin || 'N/A',
+                            amzAsin: amzAsin || 'Not Found'
+                        });
+                    });
+
+                    displayResults();
+                } catch (error) {
+                    console.error('Validation error:', error);
+                    alert('Error during validation: ' + error.message);
+                }
+
+                btn.disabled = false;
+                btn.innerHTML = 'Validate Data';
+            }, 500);
+        }
+
+        function displayResults() {
+            const resultsSection = document.getElementById('results');
+            const totalCount = validationResults.length;
+            const validCount = validationResults.filter(r => r.parentMatch && r.asinMatch).length;
+            const mismatchCount = totalCount - validCount;
+
+            document.getElementById('totalCount').textContent = totalCount;
+            document.getElementById('validCount').textContent = validCount;
+            document.getElementById('mismatchCount').textContent = mismatchCount;
+
+            const tbody = document.getElementById('resultsBody');
+            tbody.innerHTML = '';
+
+            validationResults.forEach(result => {
+                const row = document.createElement('tr');
+                
+                const parentStatus = result.parentMatch ? 
+                    '<span class="match">✓ Match</span>' : 
+                    '<span class="mismatch">✗ Mismatch</span>';
+                
+                const asinStatus = result.asinMatch ? 
+                    '<span class="match">✓ Match</span>' : 
+                    '<span class="mismatch">✗ Mismatch</span>';
+
+                row.innerHTML = `
+                    <td>${result.sku}</td>
+                    <td>${parentStatus}</td>
+                    <td>${result.sfParent}</td>
+                    <td>${result.amzParent}</td>
+                    <td>${asinStatus}</td>
+                    <td>${result.sfAsin}</td>
+                    <td>${result.amzAsin}</td>
+                `;
+
+                tbody.appendChild(row);
+            });
+
+            resultsSection.style.display = 'block';
+        }
+
+        function downloadResults() {
+            const csvContent = [
+                ['SKU', 'Parent Status', 'SF Parent', 'AMZ Parent', 'ASIN Status', 'SF ASIN', 'AMZ ASIN']
+            ];
+
+            validationResults.forEach(result => {
+                csvContent.push([
+                    result.sku,
+                    result.parentMatch ? 'Match' : 'Mismatch',
+                    result.sfParent,
+                    result.amzParent,
+                    result.asinMatch ? 'Match' : 'Mismatch',
+                    result.sfAsin,
+                    result.amzAsin
+                ]);
+            });
+
+            const csv = Papa.unparse(csvContent);
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+            link.setAttribute('href', url);
+            link.setAttribute('download', 'validation_results.csv');
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+    </script>
+</body>
+</html>
