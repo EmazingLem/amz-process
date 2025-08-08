@@ -1,0 +1,673 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SKU Measurement Comparison Tool</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            color: white;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 10px;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .upload-section {
+            background: white;
+            border-radius: 16px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+
+        .upload-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .file-upload {
+            border: 2px dashed #e1e5e9;
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+            transition: all 0.3s ease;
+            position: relative;
+            background: #f8fafc;
+        }
+
+        .file-upload:hover {
+            border-color: #667eea;
+            background: #f0f4ff;
+            transform: translateY(-2px);
+        }
+
+        .file-upload.dragover {
+            border-color: #667eea;
+            background: #f0f4ff;
+            box-shadow: 0 0 20px rgba(102, 126, 234, 0.2);
+        }
+
+        .file-upload.uploaded {
+            border-color: #10b981;
+            background: #ecfdf5;
+        }
+
+        .file-upload input {
+            position: absolute;
+            opacity: 0;
+            width: 100%;
+            height: 100%;
+            cursor: pointer;
+        }
+
+        .upload-icon {
+            font-size: 2rem;
+            margin-bottom: 10px;
+            color: #9ca3af;
+        }
+
+        .file-upload.uploaded .upload-icon {
+            color: #10b981;
+        }
+
+        .upload-label {
+            font-weight: 600;
+            font-size: 1rem;
+            color: #374151;
+            margin-bottom: 5px;
+        }
+
+        .upload-hint {
+            color: #6b7280;
+            font-size: 0.9rem;
+        }
+
+        .file-name {
+            margin-top: 10px;
+            color: #10b981;
+            font-weight: 500;
+            font-size: 0.9rem;
+        }
+
+        .compare-btn {
+            width: 100%;
+            padding: 15px 30px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+        }
+
+        .compare-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+        }
+
+        .compare-btn:disabled {
+            background: #d1d5db;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+
+        .results-section {
+            background: white;
+            border-radius: 16px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            display: none;
+        }
+
+        .results-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .results-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #1f2937;
+        }
+
+        .summary-stats {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+
+        .stat {
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #667eea;
+        }
+
+        .stat-label {
+            font-size: 0.9rem;
+            color: #6b7280;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .download-btn {
+            padding: 10px 20px;
+            background: #10b981;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .download-btn:hover {
+            background: #059669;
+            transform: translateY(-1px);
+        }
+
+        .table-container {
+            overflow-x: auto;
+            border-radius: 8px;
+            border: 1px solid #e5e7eb;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+        }
+
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #e5e7eb;
+            font-size: 0.9rem;
+        }
+
+        th {
+            background: #f9fafb;
+            font-weight: 600;
+            color: #374151;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        .mismatch-yes {
+            background-color: #fef2f2;
+            color: #dc2626;
+            font-weight: 600;
+        }
+
+        .mismatch-no {
+            background-color: #f0fdf4;
+            color: #16a34a;
+            font-weight: 600;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            color: #667eea;
+            font-weight: 600;
+        }
+
+        .loading-spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 15px;
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .upload-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .results-header {
+                flex-direction: column;
+                align-items: stretch;
+                text-align: center;
+            }
+            
+            .summary-stats {
+                justify-content: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>SKU Measurement Comparison Tool</h1>
+            <p>Compare SKU dimensions and weights across SF Product Prices, Amazon CAT, and AMZ PO reports</p>
+        </div>
+
+        <div class="upload-section">
+            <div class="upload-grid">
+                <div class="file-upload" id="sfUpload">
+                    <input type="file" id="sfFile" accept=".csv" />
+                    <div class="upload-icon">📊</div>
+                    <div class="upload-label">SF Product Prices Report (CSV)</div>
+                    <div class="upload-hint">Drop file here or click to browse</div>
+                    <div class="file-name" id="sfFileName"></div>
+                </div>
+
+                <div class="file-upload" id="catUpload">
+                    <input type="file" id="catFile" accept=".csv" />
+                    <div class="upload-icon">📋</div>
+                    <div class="upload-label">Amazon CAT Report (CSV)</div>
+                    <div class="upload-hint">Drop file here or click to browse</div>
+                    <div class="file-name" id="catFileName"></div>
+                </div>
+
+                <div class="file-upload" id="amzUpload">
+                    <input type="file" id="amzFile" accept=".csv" />
+                    <div class="upload-icon">📦</div>
+                    <div class="upload-label">AMZ PO Report (CSV)</div>
+                    <div class="upload-hint">Drop file here or click to browse</div>
+                    <div class="file-name" id="amzFileName"></div>
+                </div>
+            </div>
+
+            <button class="compare-btn" id="compareBtn" disabled>
+                <span class="loading" id="loadingSpinner">
+                    <div class="loading-spinner"></div>
+                    Processing...
+                </span>
+                <span id="compareText">Compare SKUs</span>
+            </button>
+        </div>
+
+        <div class="results-section" id="resultsSection">
+            <div class="results-header">
+                <div class="results-title">Comparison Results</div>
+                <div class="summary-stats">
+                    <div class="stat">
+                        <div class="stat-value" id="totalSKUs">0</div>
+                        <div class="stat-label">Total SKUs</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-value" id="dimensionMismatches">0</div>
+                        <div class="stat-label">Dimension Issues</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-value" id="weightMismatches">0</div>
+                        <div class="stat-label">Weight Issues</div>
+                    </div>
+                </div>
+                <button class="download-btn" id="downloadBtn">Download CSV</button>
+            </div>
+
+            <div class="table-container">
+                <table id="resultsTable">
+                    <thead>
+                        <tr>
+                            <th>SKU</th>
+                            <th>SF Length</th>
+                            <th>SF Width</th>
+                            <th>SF Height</th>
+                            <th>SF Weight</th>
+                            <th>CAT Length</th>
+                            <th>CAT Width</th>
+                            <th>CAT Height</th>
+                            <th>CAT Weight</th>
+                            <th>Dimension Mismatch</th>
+                            <th>Weight Mismatch</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let sfData = null;
+        let catData = null;
+        let amzData = null;
+        let comparisonResults = [];
+
+        // File upload handling
+        function setupFileUpload(uploadId, fileId, fileNameId) {
+            const uploadDiv = document.getElementById(uploadId);
+            const fileInput = document.getElementById(fileId);
+            const fileNameDiv = document.getElementById(fileNameId);
+
+            uploadDiv.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                uploadDiv.classList.add('dragover');
+            });
+
+            uploadDiv.addEventListener('dragleave', () => {
+                uploadDiv.classList.remove('dragover');
+            });
+
+            uploadDiv.addEventListener('drop', (e) => {
+                e.preventDefault();
+                uploadDiv.classList.remove('dragover');
+                const files = e.dataTransfer.files;
+                if (files.length > 0) {
+                    fileInput.files = files;
+                    handleFileSelect(files[0], uploadId, fileNameId);
+                }
+            });
+
+            fileInput.addEventListener('change', (e) => {
+                if (e.target.files.length > 0) {
+                    handleFileSelect(e.target.files[0], uploadId, fileNameId);
+                }
+            });
+        }
+
+        function handleFileSelect(file, uploadId, fileNameId) {
+            const uploadDiv = document.getElementById(uploadId);
+            const fileNameDiv = document.getElementById(fileNameId);
+            
+            uploadDiv.classList.add('uploaded');
+            fileNameDiv.textContent = file.name;
+
+            Papa.parse(file, {
+                header: true,
+                skipEmptyLines: true,
+                dynamicTyping: false,
+                complete: (results) => {
+                    if (uploadId === 'sfUpload') {
+                        sfData = results.data;
+                    } else if (uploadId === 'catUpload') {
+                        catData = results.data;
+                    } else if (uploadId === 'amzUpload') {
+                        amzData = results.data;
+                    }
+                    checkAllFilesUploaded();
+                },
+                error: (error) => {
+                    console.error('Error parsing CSV:', error);
+                    alert('Error parsing CSV file. Please check the file format.');
+                }
+            });
+        }
+
+        function checkAllFilesUploaded() {
+            const compareBtn = document.getElementById('compareBtn');
+            if (sfData && catData && amzData) {
+                compareBtn.disabled = false;
+            }
+        }
+
+        function parseDimensions(dimensionString) {
+            if (!dimensionString || dimensionString === '0') return null;
+            const parts = dimensionString.split('x');
+            if (parts.length !== 3) return null;
+            return {
+                length: parseFloat(parts[0]),
+                width: parseFloat(parts[1]),
+                height: parseFloat(parts[2])
+            };
+        }
+
+        function compareValues(val1, val2, tolerance = 0.01) {
+            if (val1 === null || val1 === undefined || val2 === null || val2 === undefined) {
+                return false; // Don't consider as mismatch if data is missing
+            }
+            return Math.abs(val1 - val2) > tolerance;
+        }
+
+        function processSKUComparison() {
+            const results = [];
+            let dimensionMismatchCount = 0;
+            let weightMismatchCount = 0;
+
+            // Create lookup maps for faster searching
+            const sfMap = {};
+            const catMap = {};
+
+            // Build SF lookup map
+            sfData.forEach(row => {
+                const sku = row['B2C Product: SKU'];
+                const unitDimension = row['Unit Dimension'];
+                
+                // Skip if SKU ends with -AMZBK or Unit Dimension is "0"
+                if (sku && !sku.endsWith('-AMZBK') && unitDimension !== '0') {
+                    sfMap[sku] = row;
+                }
+            });
+
+            // Build CAT lookup map
+            catData.forEach(row => {
+                const sku = row['contribution_sku#1.value'];
+                if (sku && !sku.endsWith('-AMZBK')) {
+                    catMap[sku] = row;
+                }
+            });
+
+            // Process each SKU in AMZ PO Report
+            amzData.forEach(row => {
+                const sku = row['B2C Product: SKU'];
+                if (!sku || sku.endsWith('-AMZBK')) return;
+
+                const result = {
+                    SKU: sku,
+                    SF_Length: '',
+                    SF_Width: '',
+                    SF_Height: '',
+                    SF_Weight: '',
+                    CAT_Length: '',
+                    CAT_Width: '',
+                    CAT_Height: '',
+                    CAT_Weight: '',
+                    Dimension_Mismatch: 'No',
+                    Weight_Mismatch: 'No'
+                };
+
+                // Get SF data
+                const sfRow = sfMap[sku];
+                let sfDimensions = null;
+                let sfWeight = null;
+
+                if (sfRow) {
+                    sfDimensions = parseDimensions(sfRow['Unit Dimension']);
+                    sfWeight = parseFloat(sfRow['Unit Weight']) || null;
+
+                    if (sfDimensions) {
+                        result.SF_Length = sfDimensions.length.toFixed(2);
+                        result.SF_Width = sfDimensions.width.toFixed(2);
+                        result.SF_Height = sfDimensions.height.toFixed(2);
+                    }
+                    if (sfWeight !== null) {
+                        result.SF_Weight = sfWeight.toFixed(2);
+                    }
+                }
+
+                // Get CAT data
+                const catRow = catMap[sku];
+                let catLength = null;
+                let catWidth = null;
+                let catHeight = null;
+                let catWeight = null;
+
+                if (catRow) {
+                    catLength = parseFloat(catRow['item_package_dimensions[marketplace_id=ATVPDKIKX0DER]#1.length.value']) || null;
+                    catWidth = parseFloat(catRow['item_package_dimensions[marketplace_id=ATVPDKIKX0DER]#1.width.value']) || null;
+                    catHeight = parseFloat(catRow['item_package_dimensions[marketplace_id=ATVPDKIKX0DER]#1.height.value']) || null;
+                    catWeight = parseFloat(catRow['item_package_weight[marketplace_id=ATVPDKIKX0DER]#1.value']) || null;
+
+                    if (catLength !== null) result.CAT_Length = catLength.toFixed(2);
+                    if (catWidth !== null) result.CAT_Width = catWidth.toFixed(2);
+                    if (catHeight !== null) result.CAT_Height = catHeight.toFixed(2);
+                    if (catWeight !== null) result.CAT_Weight = catWeight.toFixed(2);
+                }
+
+                // Compare dimensions
+                let hasDimensionMismatch = false;
+                if (sfDimensions && catLength !== null && catWidth !== null && catHeight !== null) {
+                    if (compareValues(sfDimensions.length, catLength) ||
+                        compareValues(sfDimensions.width, catWidth) ||
+                        compareValues(sfDimensions.height, catHeight)) {
+                        hasDimensionMismatch = true;
+                        dimensionMismatchCount++;
+                    }
+                }
+
+                // Compare weights
+                let hasWeightMismatch = false;
+                if (sfWeight !== null && catWeight !== null) {
+                    if (compareValues(sfWeight, catWeight)) {
+                        hasWeightMismatch = true;
+                        weightMismatchCount++;
+                    }
+                }
+
+                result.Dimension_Mismatch = hasDimensionMismatch ? 'Yes' : 'No';
+                result.Weight_Mismatch = hasWeightMismatch ? 'Yes' : 'No';
+
+                results.push(result);
+            });
+
+            comparisonResults = results;
+            displayResults(results, dimensionMismatchCount, weightMismatchCount);
+        }
+
+        function displayResults(results, dimensionMismatches, weightMismatches) {
+            // Update summary stats
+            document.getElementById('totalSKUs').textContent = results.length;
+            document.getElementById('dimensionMismatches').textContent = dimensionMismatches;
+            document.getElementById('weightMismatches').textContent = weightMismatches;
+
+            // Populate table
+            const tbody = document.querySelector('#resultsTable tbody');
+            tbody.innerHTML = '';
+
+            results.forEach(row => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${row.SKU}</td>
+                    <td>${row.SF_Length}</td>
+                    <td>${row.SF_Width}</td>
+                    <td>${row.SF_Height}</td>
+                    <td>${row.SF_Weight}</td>
+                    <td>${row.CAT_Length}</td>
+                    <td>${row.CAT_Width}</td>
+                    <td>${row.CAT_Height}</td>
+                    <td>${row.CAT_Weight}</td>
+                    <td class="mismatch-${row.Dimension_Mismatch.toLowerCase()}">${row.Dimension_Mismatch}</td>
+                    <td class="mismatch-${row.Weight_Mismatch.toLowerCase()}">${row.Weight_Mismatch}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            // Show results section
+            document.getElementById('resultsSection').style.display = 'block';
+            document.getElementById('resultsSection').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function downloadCSV() {
+            const csv = Papa.unparse(comparisonResults);
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+            link.setAttribute('href', url);
+            link.setAttribute('download', 'sku_comparison_results.csv');
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        // Event listeners
+        document.getElementById('compareBtn').addEventListener('click', () => {
+            const compareBtn = document.getElementById('compareBtn');
+            const loadingSpinner = document.getElementById('loadingSpinner');
+            const compareText = document.getElementById('compareText');
+
+            compareBtn.disabled = true;
+            loadingSpinner.style.display = 'inline-block';
+            compareText.style.display = 'none';
+
+            // Use setTimeout to allow UI to update before processing
+            setTimeout(() => {
+                try {
+                    processSKUComparison();
+                } catch (error) {
+                    console.error('Error processing comparison:', error);
+                    alert('Error processing files. Please check the file formats and try again.');
+                } finally {
+                    compareBtn.disabled = false;
+                    loadingSpinner.style.display = 'none';
+                    compareText.style.display = 'inline';
+                }
+            }, 100);
+        });
+
+        document.getElementById('downloadBtn').addEventListener('click', downloadCSV);
+
+        // Initialize file uploads
+        setupFileUpload('sfUpload', 'sfFile', 'sfFileName');
+        setupFileUpload('catUpload', 'catFile', 'catFileName');
+        setupFileUpload('amzUpload', 'amzFile', 'amzFileName');
+    </script>
+</body>
+</html>
