@@ -1,0 +1,1005 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SKU Measurement Comparison Tool</title>
+    
+    <!-- 
+    GitHub Pages Publishing Instructions:
+    1. Create a new repository on GitHub
+    2. Upload this HTML file (rename to index.html)
+    3. Go to Settings > Pages
+    4. Select "Deploy from a branch" > "main" > "/ (root)"
+    5. Your app will be available at: https://yourusername.github.io/repositoryname/
+    -->
+    
+    <!-- External Libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f5f5f5;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+            text-align: center;
+            font-size: 2.2em;
+            font-weight: 700;
+        }
+        
+        /* Instructions Styling */
+        .instructions {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 25px;
+            border-radius: 12px;
+            margin-bottom: 30px;
+        }
+        
+        .instructions h2 {
+            margin: 0 0 20px 0;
+            font-size: 1.5em;
+            text-align: center;
+        }
+        
+        .instruction-steps {
+            display: grid;
+            gap: 20px;
+        }
+        
+        .step {
+            display: flex;
+            align-items: flex-start;
+            gap: 15px;
+        }
+        
+        .step-number {
+            background: rgba(255,255,255,0.2);
+            color: white;
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 1.1em;
+            flex-shrink: 0;
+            backdrop-filter: blur(10px);
+            border: 2px solid rgba(255,255,255,0.3);
+        }
+        
+        .step-content {
+            flex: 1;
+        }
+        
+        .step-content h3 {
+            margin: 0 0 8px 0;
+            font-size: 1.1em;
+            font-weight: 600;
+        }
+        
+        .step-content p {
+            margin: 0 0 8px 0;
+            line-height: 1.5;
+            opacity: 0.95;
+        }
+        
+        .step-content ul {
+            margin: 8px 0;
+            padding-left: 20px;
+        }
+        
+        .step-content li {
+            margin-bottom: 5px;
+            line-height: 1.4;
+        }
+        
+        .step-content a {
+            color: #87CEEB;
+            text-decoration: none;
+            font-weight: 500;
+        }
+        
+        .step-content a:hover {
+            color: white;
+            text-decoration: underline;
+        }
+        
+        .step-content code {
+            background: rgba(255,255,255,0.2);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+        }
+        
+        .upload-section {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 25px;
+            margin-bottom: 35px;
+        }
+        
+        .file-input-group {
+            border: 3px dashed #e3e6f0;
+            border-radius: 12px;
+            padding: 25px;
+            text-align: center;
+            transition: all 0.3s ease;
+            background: linear-gradient(145deg, #f8f9ff, #ffffff);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .file-input-group::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, #4facfe, #00f2fe);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        
+        .file-input-group:hover {
+            border-color: #4facfe;
+            background: linear-gradient(145deg, #f0f8ff, #ffffff);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(79, 172, 254, 0.15);
+        }
+        
+        .file-input-group:hover::before {
+            opacity: 1;
+        }
+        
+        .file-input-group.dragover {
+            border-color: #00f2fe;
+            background: linear-gradient(145deg, #e6fbff, #ffffff);
+            transform: scale(1.02);
+        }
+        
+        .file-input-group.uploaded {
+            border-color: #10d876;
+            background: linear-gradient(145deg, #e8fdf4, #ffffff);
+            border-style: solid;
+        }
+        
+        .file-input-group.uploaded::before {
+            background: linear-gradient(90deg, #10d876, #06d6a0);
+            opacity: 1;
+        }
+        
+        .file-input-group label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 15px;
+            color: #2c3e50;
+            font-size: 1.1em;
+        }
+        
+        .file-input {
+            margin: 15px 0;
+            padding: 12px;
+            border: 2px solid #e3e6f0;
+            border-radius: 8px;
+            width: 100%;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+        
+        .file-input:focus {
+            outline: none;
+            border-color: #4facfe;
+            box-shadow: 0 0 0 3px rgba(79, 172, 254, 0.1);
+        }
+        
+        .file-status {
+            margin-top: 15px;
+            font-size: 0.9em;
+            color: #666;
+            padding: 8px 12px;
+            border-radius: 6px;
+            background: #f8f9fa;
+        }
+        
+        .file-status.success {
+            color: #10d876;
+            background: #e8fdf4;
+            font-weight: 600;
+            border: 1px solid #10d876;
+        }
+        
+        .compare-btn {
+            display: block;
+            width: 250px;
+            margin: 40px auto;
+            padding: 16px 32px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 50px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+        
+        .compare-btn:disabled {
+            background: linear-gradient(135deg, #bdc3c7, #95a5a6);
+            cursor: not-allowed;
+            box-shadow: none;
+            transform: none;
+        }
+        
+        .compare-btn:not(:disabled):hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+        }
+        
+        .compare-btn:not(:disabled):active {
+            transform: translateY(-1px);
+        }
+        
+        .results-section {
+            margin-top: 30px;
+            display: none;
+        }
+        
+        .download-buttons {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            margin-bottom: 30px;
+        }
+        
+        .download-btn {
+            padding: 14px 28px;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+        
+        .download-csv {
+            background: linear-gradient(135deg, #ff6b6b, #ee5a24);
+            color: white;
+        }
+        
+        .download-csv:hover {
+            background: linear-gradient(135deg, #ee5a24, #c0392b);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(238, 90, 36, 0.4);
+        }
+        
+        .download-xlsx {
+            background: linear-gradient(135deg, #10ac84, #06d6a0);
+            color: white;
+        }
+        
+        .download-xlsx:hover {
+            background: linear-gradient(135deg, #06d6a0, #00b894);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(6, 214, 160, 0.4);
+        }
+        
+        .results-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            font-size: 12px;
+        }
+        
+        .results-table th,
+        .results-table td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        
+        .results-table th {
+            background-color: #f2f2f2;
+            font-weight: bold;
+            position: sticky;
+            top: 0;
+        }
+        
+        .results-table tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        
+        .mismatch-yes {
+            background-color: #ffebee !important;
+            color: #c62828;
+            font-weight: bold;
+        }
+        
+        .mismatch-no {
+            background-color: #e8f5e8 !important;
+            color: #2e7d32;
+        }
+        
+        .table-container {
+            max-height: 500px;
+            overflow: auto;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+        }
+        
+        .error {
+            color: #e74c3c;
+            background: #fadbd8;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        
+        .summary {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
+        
+        .summary-item {
+            text-align: center;
+        }
+        
+        .summary-number {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+        
+        .summary-label {
+            font-size: 0.9em;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🛠 Measurement Comparison & Amazon Feed Tool</h1>
+        
+        <!-- Instructions Section -->
+        <div class="instructions">
+            <h2>📖 How to Use This Tool</h2>
+            
+            <div class="instruction-steps">
+                <div class="step">
+                    <div class="step-number">1</div>
+                    <div class="step-content">
+                        <h3>📁 Prepare the Files</h3>
+                        <p>You'll need <strong>three CSV files</strong>:</p>
+                        <ul>
+                            <li><strong>SF Product Prices Report</strong> - Download from: <a href="https://emazing.my.salesforce.com/00O3r000007bolC" target="_blank">Salesforce Report</a></li>
+                            <li><strong>AMZ PO Report</strong> - Download from: <a href="https://emazing.my.salesforce.com/00OPH0000004sD7" target="_blank">Salesforce Report</a></li>
+                            <li><strong>Amazon CAT Report</strong> - Generate using the provided script and use the final result CSV</li>
+                        </ul>
+                        <p>Make sure all three files are in <code>.csv</code> format.</p>
+                    </div>
+                </div>
+                
+                <div class="step">
+                    <div class="step-number">2</div>
+                    <div class="step-content">
+                        <h3>📤 Upload the Files</h3>
+                        <p>Upload the three files by dragging them into the designated areas below or using the file picker.</p>
+                    </div>
+                </div>
+                
+                <div class="step">
+                    <div class="step-number">3</div>
+                    <div class="step-content">
+                        <h3>🔍 Run the Comparison</h3>
+                        <p>Once all files are loaded, click the <strong>"Compare"</strong> button. The tool will compare dimensions and weights by SKU and generate two output files.</p>
+                    </div>
+                </div>
+                
+                <div class="step">
+                    <div class="step-number">4</div>
+                    <div class="step-content">
+                        <h3>✅ Use the Outputs</h3>
+                        <ul>
+                            <li><strong>Comparison Result (CSV)</strong> — Review to verify what will change</li>
+                            <li><strong>Amazon Feed (XLSX)</strong> — Upload directly to Amazon Seller Central</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="upload-section">
+            <div class="file-input-group" id="sf-group">
+                <label>SF Product Prices Report (CSV)</label>
+                <input type="file" id="sf-file" class="file-input" accept=".csv" />
+                <div class="file-status" id="sf-status">No file selected</div>
+            </div>
+            
+            <div class="file-input-group" id="cat-group">
+                <label>Amazon CAT Report (CSV)</label>
+                <input type="file" id="cat-file" class="file-input" accept=".csv" />
+                <div class="file-status" id="cat-status">No file selected</div>
+            </div>
+            
+            <div class="file-input-group" id="po-group">
+                <label>AMZ PO Report (CSV)</label>
+                <input type="file" id="po-file" class="file-input" accept=".csv" />
+                <div class="file-status" id="po-status">No file selected</div>
+            </div>
+        </div>
+        
+        <button id="compare-btn" class="compare-btn" disabled>Compare</button>
+        
+        <div id="results-section" class="results-section">
+            <div class="download-buttons">
+                <button id="download-csv" class="download-btn download-csv">Download Comparison Results (CSV)</button>
+                <button id="download-xlsx" class="download-btn download-xlsx">Download Amazon Feed (XLSX)</button>
+            </div>
+            
+            <div id="summary" class="summary"></div>
+            
+            <div class="table-container">
+                <table id="results-table" class="results-table">
+                    <thead>
+                        <tr>
+                            <th>SKU</th>
+                            <th>SF Length</th>
+                            <th>SF Width</th>
+                            <th>SF Height</th>
+                            <th>SF Weight</th>
+                            <th>CAT Length</th>
+                            <th>CAT Width</th>
+                            <th>CAT Height</th>
+                            <th>CAT Weight</th>
+                            <th>Dimension Mismatch</th>
+                            <th>Weight Mismatch</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global variables to store parsed data
+        let sfData = null;
+        let catData = null;
+        let poData = null;
+        let comparisonResults = [];
+
+        // File upload handlers
+        const fileInputs = {
+            'sf-file': { data: () => sfData, setter: (data) => sfData = data, status: 'sf-status', group: 'sf-group' },
+            'cat-file': { data: () => catData, setter: (data) => catData = data, status: 'cat-status', group: 'cat-group' },
+            'po-file': { data: () => poData, setter: (data) => poData = data, status: 'po-status', group: 'po-group' }
+        };
+
+        // Initialize file input handlers
+        Object.keys(fileInputs).forEach(inputId => {
+            const input = document.getElementById(inputId);
+            const config = fileInputs[inputId];
+            
+            input.addEventListener('change', (e) => handleFileUpload(e.target.files[0], config));
+            
+            // Drag and drop handlers
+            const group = document.getElementById(config.group);
+            group.addEventListener('dragover', handleDragOver);
+            group.addEventListener('dragleave', handleDragLeave);
+            group.addEventListener('drop', (e) => handleDrop(e, config));
+        });
+
+        function handleDragOver(e) {
+            e.preventDefault();
+            e.currentTarget.classList.add('dragover');
+        }
+
+        function handleDragLeave(e) {
+            e.preventDefault();
+            e.currentTarget.classList.remove('dragover');
+        }
+
+        function handleDrop(e, config) {
+            e.preventDefault();
+            e.currentTarget.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleFileUpload(files[0], config);
+            }
+        }
+
+        function handleFileUpload(file, config) {
+            if (!file) return;
+            
+            const statusEl = document.getElementById(config.status);
+            const groupEl = document.getElementById(config.group);
+            
+            statusEl.textContent = 'Processing...';
+            
+            // First, try to preprocess the file to fix common issues
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                let csvText = e.target.result;
+                
+                // Try to fix common CSV issues by preprocessing the text
+                csvText = preprocessCSV(csvText);
+                
+                Papa.parse(csvText, {
+                    header: true,
+                    skipEmptyLines: true,
+                    dynamicTyping: false,
+                    delimiter: '',  // Auto-detect delimiter
+                    quoteChar: '"',
+                    escapeChar: '"',
+                    delimitersToGuess: [',', '\t', '|', ';'],
+                    transform: (value) => {
+                        if (typeof value === 'string') {
+                            return value.trim();
+                        }
+                        return value;
+                    },
+                    complete: (results) => {
+                        console.log('Parse results:', results);
+                        
+                        // More lenient error handling - only fail on complete parse failure
+                        if (results.errors.length > 0) {
+                            console.warn('Parse warnings:', results.errors);
+                            
+                            // Check if we have any usable data despite errors
+                            if (!results.data || results.data.length === 0) {
+                                let errorMsg = 'CSV parsing failed completely. Try:\n';
+                                errorMsg += '• Saving the file as UTF-8 CSV\n';
+                                errorMsg += '• Opening in Excel and re-saving as CSV\n';
+                                errorMsg += '• Checking for corrupted data in rows: ' + results.errors.map(e => e.row).join(', ');
+                                
+                                statusEl.innerHTML = `<div class="error" style="white-space: pre-line;">${errorMsg}</div>`;
+                                statusEl.classList.remove('success');
+                                groupEl.classList.remove('uploaded');
+                                return;
+                            }
+                        }
+                        
+                        if (!results.data || results.data.length === 0) {
+                            statusEl.innerHTML = '<div class="error">No valid data found in file</div>';
+                            statusEl.classList.remove('success');
+                            groupEl.classList.remove('uploaded');
+                            return;
+                        }
+                        
+                        // Use all data without filtering rows
+                        const cleanedData = results.data;
+                        
+                        if (cleanedData.length === 0) {
+                            statusEl.innerHTML = '<div class="error">No data found in file</div>';
+                            statusEl.classList.remove('success');
+                            groupEl.classList.remove('uploaded');
+                            return;
+                        }
+                        
+                        // Log column headers for debugging
+                        if (cleanedData.length > 0) {
+                            console.log('File columns:', Object.keys(cleanedData[0]));
+                            console.log('Sample row:', cleanedData[0]);
+                            console.log('Total rows:', cleanedData.length);
+                        }
+                        
+                        // Validate expected columns based on file type
+                        const validation = validateFileStructure(cleanedData, config);
+                        if (!validation.valid) {
+                            statusEl.innerHTML = `<div class="error">Invalid file structure: ${validation.message}</div>`;
+                            statusEl.classList.remove('success');
+                            groupEl.classList.remove('uploaded');
+                            return;
+                        }
+                        
+                        config.setter(cleanedData);
+                        let message = `✓ Loaded ${cleanedData.length} rows`;
+                        if (results.errors.length > 0) {
+                            message += ` - ${results.errors.length} parsing warnings`;
+                        }
+                        statusEl.textContent = message;
+                        statusEl.classList.add('success');
+                        groupEl.classList.add('uploaded');
+                        
+                        checkAllFilesLoaded();
+                    },
+                    error: (error) => {
+                        console.error('File parse error:', error);
+                        statusEl.innerHTML = `<div class="error">Parse Error: ${error.message || 'Unknown error'}</div>`;
+                        statusEl.classList.remove('success');
+                        groupEl.classList.remove('uploaded');
+                    }
+                });
+            };
+            
+            reader.onerror = function(error) {
+                console.error('File read error:', error);
+                statusEl.innerHTML = `<div class="error">File Read Error: ${error.message || 'Cannot read file'}</div>`;
+                statusEl.classList.remove('success');
+                groupEl.classList.remove('uploaded');
+            };
+            
+            reader.readAsText(file, 'UTF-8');
+        }
+
+        // Preprocess CSV text but don't remove any rows - just clean formatting
+        function preprocessCSV(csvText) {
+            // Just return the original text with minimal cleaning
+            return csvText.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+        }
+
+        function checkAllFilesLoaded() {
+            const compareBtn = document.getElementById('compare-btn');
+            if (sfData && catData && poData) {
+                compareBtn.disabled = false;
+            }
+        }
+
+        // Validate file structure based on expected columns
+        function validateFileStructure(data, config) {
+            if (!data || data.length === 0) {
+                return { valid: false, message: 'No data rows found' };
+            }
+            
+            const headers = Object.keys(data[0]);
+            const inputId = Object.keys(fileInputs).find(id => fileInputs[id] === config);
+            
+            let expectedColumns = [];
+            let fileType = '';
+            
+            if (inputId === 'sf-file') {
+                expectedColumns = ['B2C Product: SKU', 'Unit Dimension', 'Unit Weight'];
+                fileType = 'SF Product Prices Report';
+            } else if (inputId === 'cat-file') {
+                expectedColumns = ['item_sku', 'package_length', 'package_width', 'package_height', 'package_weight'];
+                fileType = 'Amazon CAT Report';
+            } else if (inputId === 'po-file') {
+                expectedColumns = ['B2C Product: SKU'];
+                fileType = 'AMZ PO Report';
+            }
+            
+            const missingColumns = expectedColumns.filter(col => !headers.includes(col));
+            
+            if (missingColumns.length > 0) {
+                return {
+                    valid: false,
+                    message: `Missing required columns in ${fileType}: ${missingColumns.join(', ')}. Found columns: ${headers.join(', ')}`
+                };
+            }
+            
+            return { valid: true, message: 'File structure is valid' };
+        }
+
+        // Parse SF dimensions from "LxWxH" format with better error handling
+        function parseSFDimensions(dimensionStr) {
+            if (!dimensionStr || dimensionStr === '0' || dimensionStr.trim() === '') {
+                return { length: null, width: null, height: null };
+            }
+            
+            // Clean the string and handle various formats
+            const cleanStr = String(dimensionStr).trim().replace(/[""]/g, '');
+            
+            // Try different separators (x, X, ×)
+            let parts = cleanStr.split(/[xX×]/);
+            
+            if (parts.length !== 3) {
+                console.warn(`Invalid dimension format: "${dimensionStr}" - expected LxWxH format`);
+                return { length: null, width: null, height: null };
+            }
+            
+            try {
+                return {
+                    length: parseFloat(parts[0].trim()) || null,
+                    width: parseFloat(parts[1].trim()) || null,
+                    height: parseFloat(parts[2].trim()) || null
+                };
+            } catch (error) {
+                console.warn(`Error parsing dimensions "${dimensionStr}":`, error);
+                return { length: null, width: null, height: null };
+            }
+        }
+
+        // Compare two values with tolerance
+        function isWithinTolerance(val1, val2, tolerance = 0.01) {
+            if (val1 === null || val2 === null || val1 === undefined || val2 === undefined) return true;
+            return Math.abs(val1 - val2) <= tolerance;
+        }
+
+        function compareData() {
+            const compareBtn = document.getElementById('compare-btn');
+            compareBtn.textContent = 'Processing...';
+            compareBtn.disabled = true;
+            
+            comparisonResults = [];
+            
+            // Create lookup maps for faster searching
+            const sfLookup = {};
+            const catLookup = {};
+            
+            // Process SF data
+            sfData.forEach(row => {
+                const sku = row['B2C Product: SKU'];
+                if (sku && !sku.endsWith('-AMZBK') && row['Unit Dimension'] !== '0') {
+                    const dimensions = parseSFDimensions(row['Unit Dimension']);
+                    sfLookup[sku] = {
+                        ...dimensions,
+                        weight: parseFloat(row['Unit Weight']) || null
+                    };
+                }
+            });
+            
+            // Process CAT data
+            catData.forEach(row => {
+                const sku = row['item_sku'];
+                if (sku && !sku.endsWith('-AMZBK')) {
+                    catLookup[sku] = {
+                        length: parseFloat(row['package_length']) || null,
+                        width: parseFloat(row['package_width']) || null,
+                        height: parseFloat(row['package_height']) || null,
+                        weight: parseFloat(row['package_weight']) || null,
+                        feed_product_type: row['feed_product_type'],
+                        external_product_id: row['external_product_id'],
+                        external_product_id_type: row['external_product_id_type'],
+                        brand_name: row['brand_name'],
+                        item_name: row['item_name'],
+                        item_type: row['item_type'],
+                        department_name: row['department_name']
+                    };
+                }
+            });
+            
+            // Process PO data - only use B2C Product: SKU column
+            poData.forEach(row => {
+                const sku = row['B2C Product: SKU'];
+                // Only process if SKU exists and doesn't end with -AMZBK
+                if (!sku || sku.endsWith('-AMZBK') || String(sku).trim() === '') return;
+                
+                const sfInfo = sfLookup[sku] || {};
+                const catInfo = catLookup[sku] || {};
+                
+                // Check dimension mismatches
+                const dimensionMismatch = (
+                    !isWithinTolerance(sfInfo.length, catInfo.length) ||
+                    !isWithinTolerance(sfInfo.width, catInfo.width) ||
+                    !isWithinTolerance(sfInfo.height, catInfo.height)
+                );
+                
+                // Check weight mismatch
+                const weightMismatch = !isWithinTolerance(sfInfo.weight, catInfo.weight);
+                
+                comparisonResults.push({
+                    sku,
+                    sf_length: sfInfo.length,
+                    sf_width: sfInfo.width,
+                    sf_height: sfInfo.height,
+                    sf_weight: sfInfo.weight,
+                    cat_length: catInfo.length,
+                    cat_width: catInfo.width,
+                    cat_height: catInfo.height,
+                    cat_weight: catInfo.weight,
+                    dimension_mismatch: dimensionMismatch,
+                    weight_mismatch: weightMismatch,
+                    cat_data: catInfo
+                });
+            });
+            
+            displayResults();
+            
+            compareBtn.textContent = 'Compare';
+            compareBtn.disabled = false;
+        }
+
+        function displayResults() {
+            const resultsSection = document.getElementById('results-section');
+            const summaryEl = document.getElementById('summary');
+            const tableBody = document.querySelector('#results-table tbody');
+            
+            // Show results section
+            resultsSection.style.display = 'block';
+            
+            // Calculate summary stats
+            const totalSKUs = comparisonResults.length;
+            const dimensionMismatches = comparisonResults.filter(r => r.dimension_mismatch).length;
+            const weightMismatches = comparisonResults.filter(r => r.weight_mismatch).length;
+            const anyMismatch = comparisonResults.filter(r => r.dimension_mismatch || r.weight_mismatch).length;
+            
+            // Display summary
+            summaryEl.innerHTML = `
+                <div class="summary-item">
+                    <div class="summary-number">${totalSKUs}</div>
+                    <div class="summary-label">Total SKUs</div>
+                </div>
+                <div class="summary-item">
+                    <div class="summary-number">${anyMismatch}</div>
+                    <div class="summary-label">SKUs with Mismatches</div>
+                </div>
+                <div class="summary-item">
+                    <div class="summary-number">${dimensionMismatches}</div>
+                    <div class="summary-label">Dimension Mismatches</div>
+                </div>
+                <div class="summary-item">
+                    <div class="summary-number">${weightMismatches}</div>
+                    <div class="summary-label">Weight Mismatches</div>
+                </div>
+            `;
+            
+            // Clear and populate table
+            tableBody.innerHTML = '';
+            comparisonResults.forEach(result => {
+                const row = document.createElement('tr');
+                
+                const formatValue = (val) => val === null || val === undefined ? '' : val.toFixed(2);
+                
+                row.innerHTML = `
+                    <td>${result.sku}</td>
+                    <td>${formatValue(result.sf_length)}</td>
+                    <td>${formatValue(result.sf_width)}</td>
+                    <td>${formatValue(result.sf_height)}</td>
+                    <td>${formatValue(result.sf_weight)}</td>
+                    <td>${formatValue(result.cat_length)}</td>
+                    <td>${formatValue(result.cat_width)}</td>
+                    <td>${formatValue(result.cat_height)}</td>
+                    <td>${formatValue(result.cat_weight)}</td>
+                    <td class="${result.dimension_mismatch ? 'mismatch-yes' : 'mismatch-no'}">${result.dimension_mismatch ? 'Yes' : 'No'}</td>
+                    <td class="${result.weight_mismatch ? 'mismatch-yes' : 'mismatch-no'}">${result.weight_mismatch ? 'Yes' : 'No'}</td>
+                `;
+                
+                tableBody.appendChild(row);
+            });
+        }
+
+        function downloadCSV() {
+            const headers = [
+                'SKU', 'SF_Length', 'SF_Width', 'SF_Height', 'SF_Weight',
+                'CAT_Length', 'CAT_Width', 'CAT_Height', 'CAT_Weight',
+                'Dimension_Mismatch', 'Weight_Mismatch'
+            ];
+            
+            const csvData = comparisonResults.map(result => [
+                result.sku,
+                result.sf_length || '',
+                result.sf_width || '',
+                result.sf_height || '',
+                result.sf_weight || '',
+                result.cat_length || '',
+                result.cat_width || '',
+                result.cat_height || '',
+                result.cat_weight || '',
+                result.dimension_mismatch ? 'Yes' : 'No',
+                result.weight_mismatch ? 'Yes' : 'No'
+            ]);
+            
+            const csv = Papa.unparse([headers, ...csvData]);
+            downloadFile(csv, 'measurement_comparison_results.csv', 'text/csv');
+        }
+
+        function downloadXLSX() {
+            const wb = XLSX.utils.book_new();
+            
+            // Filter to only include SKUs with mismatches
+            const mismatchResults = comparisonResults.filter(result => 
+                result.dimension_mismatch || result.weight_mismatch
+            );
+            
+            // Create the Amazon flat file feed structure
+            const wsData = [];
+            
+            // Row 1: Amazon headers
+            wsData.push([
+                'TemplateType=fptcustom', 'Version=2018.0507',
+                'TemplateSignature=T1VURVJXRUFSLFNXRUFURVIsQURVTFRfQ09TVFVNRSxTSElSVCxTS0lSVCxCQUJZX0NPU1RVTUUsU1VJVCxTSE9SVFMsU1dJTVdFQVIsQlJBLFVOREVSV0VBUixEUkVTUyxTTEVFUFdFQVIsU09DS1NIT1NJRVJZLEFDQ0VTU09SWSxMVUdHQUdFLEhBVCxQQU5UUyxCTEFaRVI=',
+                'The top 3 rows are for Amazon.com use only. Do not modify or delete the top 3 rows.',
+                '', '', '', '', 'Basic', ''
+            ]);
+            
+            // Row 2: Column headers
+            wsData.push([
+                'Product Type', 'Seller SKU', 'Product ID', 'Product ID Type', 'Brand Name',
+                'Product Name', 'Item Type Keyword', 'Department', 'Update Delete',
+                'Package Length', 'Package Width', 'Package Height', 'Package Length Unit Of Measure',
+                'Package Width Unit Of Measure', 'Package Height Unit Of Measure', 'Package Weight',
+                'Package Weight Unit Of Measure'
+            ]);
+            
+            // Row 3: Data keys
+            wsData.push([
+                'feed_product_type', 'item_sku', 'external_product_id', 'external_product_id_type',
+                'brand_name', 'item_name', 'item_type', 'department_name', 'update_delete',
+                'package_length', 'package_width', 'package_height', 'package_length_unit_of_measure',
+                'package_width_unit_of_measure', 'package_height_unit_of_measure', 'package_weight',
+                'package_weight_unit_of_measure'
+            ]);
+            
+            // Data rows: Only include SKUs with mismatches
+            mismatchResults.forEach(result => {
+                const catData = result.cat_data || {};
+                
+                wsData.push([
+                    catData.feed_product_type || '',
+                    result.sku,
+                    catData.external_product_id || '',
+                    catData.external_product_id_type || '',
+                    catData.brand_name || '',
+                    catData.item_name || '',
+                    catData.item_type || '',
+                    catData.department_name || '',
+                    'partialupdate',
+                    result.sf_length || '',
+                    result.sf_width || '',
+                    result.sf_height || '',
+                    result.sf_length ? 'Inches' : '',
+                    result.sf_width ? 'Inches' : '',
+                    result.sf_height ? 'Inches' : '',
+                    result.sf_weight || '',
+                    result.sf_weight ? 'Ounces' : ''
+                ]);
+            });
+            
+            const ws = XLSX.utils.aoa_to_sheet(wsData);
+            XLSX.utils.book_append_sheet(wb, ws, 'Sheet1');
+            
+            XLSX.writeFile(wb, 'Import File.xlsx');
+        }
+
+        function downloadFile(content, filename, mimeType) {
+            const blob = new Blob([content], { type: mimeType });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        // Event listeners
+        document.getElementById('compare-btn').addEventListener('click', compareData);
+        document.getElementById('download-csv').addEventListener('click', downloadCSV);
+        document.getElementById('download-xlsx').addEventListener('click', downloadXLSX);
+    </script>
+</body>
+</html>
